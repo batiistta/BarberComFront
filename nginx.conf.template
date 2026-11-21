@@ -4,11 +4,19 @@ server {
   root /usr/share/nginx/html;
   index index.html;
 
+  location = /index.html {
+    add_header Cache-Control "no-store";
+  }
+
   location / {
     try_files $uri $uri/ /index.html;
   }
 
-  location ~* \.(js|css|png|ico)$ {
+  location ~* \.(js|css)$ {
+    add_header Cache-Control "public, max-age=60, must-revalidate";
+  }
+
+  location ~* \.(png|ico)$ {
     expires 1h;
     add_header Cache-Control "public";
   }
