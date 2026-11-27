@@ -176,7 +176,7 @@ function mockApi(rota, d) {
   if (/^\/profissionais\/\d+\/situacao/.test(path)) return sit(M.profs, path.split('/')[2]);
   if (path === '/horarios' && d) { const arr = d.tipo === 'turno' ? M.turnos : d.tipo === 'pausa' ? M.pausas : M.bloqueios; if (d.remover === 'true') { const i=arr.findIndex(v=>v.id===d.id); if(i>=0)arr.splice(i,1); } else if (d.tipo === 'turno') { for(const day of d.dias||[]) { const row={id:d.id||String(++M.id),vinculo_id:d.vinculo,dia_semana:Number(day),hora_inicio:d.inicio,hora_fim:d.fim}; if(d.id){const i=arr.findIndex(v=>v.id===d.id);if(i>=0)arr.splice(i,1,row);else arr.push(row);}else arr.push(row); } } else { const row=d.tipo==='pausa' ? {id:d.id||String(++M.id),vinculo_id:d.vinculo,turno_id:d.turno,descricao:d.descricao,hora_inicio:d.inicio,hora_fim:d.fim} : {id:d.id||String(++M.id),vinculo_id:d.vinculo,descricao:d.descricao,data:d.data,data_label:d.data,tipo:d.motivo,hora_inicio:d.dia_inteiro==='true'?null:d.inicio,hora_fim:d.dia_inteiro==='true'?null:d.fim}; if(d.id){const i=arr.findIndex(v=>v.id===d.id);if(i>=0)arr.splice(i,1,row);else arr.push(row);}else arr.push(row); } return L({mensagem:'Horário salvo.'}); }
   if (path === '/horarios') { const v=q.get('vinculo')||'1', selected=M.vinculos.find(x=>x.id===v)||M.vinculos[0]; return L({vinculos:M.vinculos,selected,turnos:M.turnos.filter(x=>x.vinculo_id===selected.id),pausas:M.pausas.filter(x=>x.vinculo_id===selected.id),bloqueios:M.bloqueios.filter(x=>x.vinculo_id===selected.id)}); }
-  if (path === '/gestao/historico') return L({ atendimentos: [{ id: '1', inicio: '2026-01-14T15:30:00', status: 'CONFIRMADO', valor_total: '80.00', unidade: 'Unidade Campo da Pólvora', cliente: 'cli-8842', itens: 'Corte, Massagem' }] });
+  if (path === '/gestao/historico') return L({ atendimentos: [{ id: '1', inicio: '2026-01-14T15:30:00', status: 'CONFIRMADO', valor_total: '80.00', unidade: 'Unidade Campo da Pólvora', cliente: 'cli-8842', itens: [{ nome: 'Corte' }, { nome: 'Massagem' }], tem_referencia: false }] });
   return Promise.reject(Object.assign(new Error('Rota não existe no modo exemplo: ' + path), { status: 404 }));
 }
 async function api(rota, dados, extra = {}) {
@@ -730,7 +730,13 @@ async function historicoG() {
   tg('Histórico entre unidades', '<p class="vazio">Carregando…</p>', '#historico-g');
   try { const { atendimentos } = await api('/gestao/historico');
     tg('Histórico entre unidades', atendimentos.map(a => { const [dt, h] = a.inicio.split('T');
-      return `<div class="card"><div style="display:flex;justify-content:space-between"><b>${dt.split('-').reverse().join('/')} · ${h.slice(0, 5)}</b><b>${brl(a.valor_total)}</b></div><div class="mudo" style="margin-top:6px">${esc(a.status)} · ${esc(a.cliente)}</div><div style="font-size:13px;margin-top:4px">${esc(a.itens)} · ${esc(a.unidade)}</div>${a.tem_referencia ? `<p class="ajuda">Referência de corte anexada</p><img class="ref-historico" src="/api/gestao/agendamentos/${encodeURIComponent(a.id)}/referencia" alt="Foto de referência do corte">` : ''}</div>`; }).join('') || '<p class="vazio">Nenhum atendimento encontrado.</p>', '#historico-g');
+      const servicos = Array.isArray(a.itens)
+        ? a.itens.map(i => (i && typeof i === 'object' ? i.nome : i)).filter(Boolean).join(', ')
+        : String(a.itens || '');
+      const fotoRef = a.tem_referencia
+        ? `<p class="ajuda">Referência de corte anexada</p><img class="ref-historico" src="${MOCK ? '' : `${API_ORIGIN}/api/gestao/agendamentos/${encodeURIComponent(a.id)}/referencia`}" alt="Foto de referência do corte">`
+        : '';
+      return `<div class="card"><div style="display:flex;justify-content:space-between"><b>${dt.split('-').reverse().join('/')} · ${h.slice(0, 5)}</b><b>${brl(a.valor_total)}</b></div><div class="mudo" style="margin-top:6px">${esc(a.status)} · ${esc(a.cliente)}</div><div style="font-size:13px;margin-top:4px">${esc(servicos)} · ${esc(a.unidade)}</div>${fotoRef}</div>`; }).join('') || '<p class="vazio">Nenhum atendimento encontrado.</p>', '#historico-g');
   } catch (e) { aviso(e.message); }
 }
 
